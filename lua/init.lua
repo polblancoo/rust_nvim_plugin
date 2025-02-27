@@ -1,3 +1,4 @@
+
 -- Este archivo carga la biblioteca compilada de Rust
 local M = {}
 
@@ -37,22 +38,4 @@ if vim.fn.filereadable(lib_path) ~= 1 then
   return M
 end
 
--- Cargar la biblioteca
-local ok, lib = pcall(vim.fn.load_dynamic_library, lib_path)
-if not ok then
-  vim.notify("No se pudo cargar la biblioteca: " .. tostring(lib), vim.log.levels.ERROR)
-  return M
-end
 
--- Inicializar el módulo
-if lib.luaopen_rust_nvim_plugin then
-  local rust_module = lib.luaopen_rust_nvim_plugin()
-  -- Copiar todas las funciones del módulo a M
-  for k, v in pairs(rust_module or {}) do
-    M[k] = v
-  end
-else
-  vim.notify("No se encontró la función luaopen_rust_nvim_plugin", vim.log.levels.ERROR)
-end
-
-return M
