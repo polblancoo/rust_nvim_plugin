@@ -1,5 +1,4 @@
--- lua/rust_nvim_plugin.lua
-local ffi = require("ffi")
+-- Este archivo carga la biblioteca compilada de Rust
 local M = {}
 
 -- Determinar la extensión correcta según el sistema operativo
@@ -38,26 +37,22 @@ if vim.fn.filereadable(lib_path) ~= 1 then
   return M
 end
 
--- Cargar la biblioteca usando ffi
-local ok, lib = pcall(ffi.load, lib_path)
+-- Cargar la biblioteca
+local ok, lib = pcall(vim.fn.load_dynamic_library, lib_path)
 if not ok then
   vim.notify("No se pudo cargar la biblioteca: " .. tostring(lib), vim.log.levels.ERROR)
   return M
 end
 
--- Definir las funciones de Rust usando ffi.cdef
-ffi.cdef[[
-  const char* hola_mundo();
-  int suma(int a, int b);
-]]
-
 -- Inicializar el módulo
-M.hola_mundo = function()
-  return ffi.string(lib.hola_mundo())
+if lib.luaopen_rust_nvim_plugin then
+  local rust_module = lib.luaopen_rust_nvim_plugin()
+  -- Copiar todas las funciones del módulo a M
+  for k, v in pairs(rust_module or {}) do
+    M[k] = v
+  end
+else
+  vim.notify("No se encontró la función luaopen_rust_nvim_plugin", vim.log.levels.ERROR)
 end
 
-M.suma = function(a, b)
-  return lib.suma(a, b)
-end
-
-return M
+return Mreturn M
