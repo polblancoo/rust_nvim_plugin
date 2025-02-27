@@ -1,3 +1,4 @@
+-- lua/rust_nvim_plugin.lua
 local ffi = require("ffi")
 local M = {}
 
@@ -46,12 +47,17 @@ end
 
 -- Definir las funciones de Rust usando ffi.cdef
 ffi.cdef[[
-  void hello_from_rust();
+  const char* hola_mundo();
+  int suma(int a, int b);
 ]]
 
 -- Inicializar el módulo
-M.hello = function()
-  lib.hello_from_rust()
+M.hola_mundo = function()
+  return ffi.string(lib.hola_mundo())
+end
+
+M.suma = function(a, b)
+  return lib.suma(a, b)
 end
 
 return M
