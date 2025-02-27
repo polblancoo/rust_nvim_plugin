@@ -1,5 +1,4 @@
-
--- Este archivo carga la biblioteca compilada de Rust
+local ffi = require("ffi")
 local M = {}
 
 -- Determinar la extensión correcta según el sistema operativo
@@ -38,4 +37,21 @@ if vim.fn.filereadable(lib_path) ~= 1 then
   return M
 end
 
+-- Cargar la biblioteca usando ffi
+local ok, lib = pcall(ffi.load, lib_path)
+if not ok then
+  vim.notify("No se pudo cargar la biblioteca: " .. tostring(lib), vim.log.levels.ERROR)
+  return M
+end
 
+-- Definir las funciones de Rust usando ffi.cdef
+ffi.cdef[[
+  void hello_from_rust();
+]]
+
+-- Inicializar el módulo
+M.hello = function()
+  lib.hello_from_rust()
+end
+
+return M
