@@ -1,38 +1,44 @@
--- ~/.config/nvim/lua/plugins/rust_nvim_plugin.lua
-return {
-  "tu-usuario-github/rust_nvim_plugin", -- Reemplaza con tu usuario y nombre de repo
-  lazy = false, -- Cargar al inicio
-  config = function()
-    -- Cargar el plugin
-    local ok, rust_plugin = pcall(require, "rust_nvim_plugin")
-    if not ok then
-      vim.notify("No se pudo cargar rust_nvim_plugin", vim.log.levels.ERROR)
-      return
-    end
-    
-    -- Registrar comandos
-    vim.api.nvim_create_user_command("HolaMundo", function()
-      print(rust_plugin.hola_mundo())
-    end, {})
-    
-    vim.api.nvim_create_user_command("Suma", function(opts)
-      local args = opts.fargs
-      if #args == 2 then
-        local a = tonumber(args[1])
-        local b = tonumber(args[2])
-        if a and b then
-          print(string.format("%d + %d = %d", a, b, rust_plugin.suma(a, b)))
-        else
-          print("Los argumentos deben ser números")
-        end
-      else
-        print("Uso: Suma <num1> <num2>")
-      end
-    end, {nargs = "*"})
-    
-    -- Mapeo de teclas
-    vim.keymap.set("n", "<leader>hm", function()
-      print(rust_plugin.hola_mundo())
-    end, {desc = "Mostrar Hola Mundo"})
-  end,
-}
+-- Este archivo carga la biblioteca compilada de Rust
+local M = {}
+
+-- Determinar la extensión correcta según el sistema operativo
+local function get_extension()
+  local system = vim.loop.os_uname().sysname
+  if system == "Windows" or system == "Windows_NT" then
+    return "dll"
+  elseif system == "Darwin" then
+    return "dylib"
+  else
+    return "so"
+  end
+end
+
+-- Construir la ruta a la biblioteca compartida
+local extension = get_extension()
+local plugin_path = vim.fn.fnamemodify(vim.api.nvim_get_runtime_file("lua/rust_nvim_plugin.lua", false)[1], ":h")
+local lib_name = "librust_nvim_plugin"
+if extension == "dll" then
+  lib_name = "rust_nvim_plugin" -- Windows no usa el prefijo 'lib'
+end
+local lib_path = plugin_path .. "/" .. lib_name .. "." .. extension
+
+-- Cargar la biblioteca
+local ok, lib = pcall(vim.fn.load_dynamic_library, lib_path)
+if not ok then
+  vim.notify("No se pudo cargar la biblioteca Rust: " .. lib_path, vim.log.levels.ERROR)
+  return M
+end
+
+-- Cargar el módulo
+local rust_module
+if lib.luaopen_rust_nvim_plugin then
+  rust_module = lib.luaopen_rust_nvim_plugin()
+  -- Copiar todas las funciones del módulo a M
+  for k, v in pairs(rust_module) do
+    M[k] = v
+  end
+else
+  vim.notify("Error al inicializar el módulo Rust", vim.log.levels.ERROR)
+end
+
+return M
