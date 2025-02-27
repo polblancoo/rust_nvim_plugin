@@ -13,32 +13,46 @@ local function get_extension()
   end
 end
 
+-- Obtener la ruta donde está instalado el plugin
+local plugin_path
+local runtime_files = vim.api.nvim_get_runtime_file("lua/rust_nvim_plugin.lua", false)
+if #runtime_files > 0 then
+  plugin_path = vim.fn.fnamemodify(runtime_files[1], ":h")
+else
+  vim.notify("No se pudo encontrar la ruta del plugin", vim.log.levels.ERROR)
+  return M
+end
+
 -- Construir la ruta a la biblioteca compartida
 local extension = get_extension()
-local plugin_path = vim.fn.fnamemodify(vim.api.nvim_get_runtime_file("lua/rust_nvim_plugin.lua", false)[1], ":h")
 local lib_name = "librust_nvim_plugin"
 if extension == "dll" then
   lib_name = "rust_nvim_plugin" -- Windows no usa el prefijo 'lib'
 end
 local lib_path = plugin_path .. "/" .. lib_name .. "." .. extension
 
--- Cargar la biblioteca
-local ok, lib = pcall(vim.fn.load_dynamic_library, lib_path)
-if not ok then
-  vim.notify("No se pudo cargar la biblioteca Rust: " .. lib_path, vim.log.levels.ERROR)
+-- Verificar que el archivo existe
+if vim.fn.filereadable(lib_path) ~= 1 then
+  vim.notify("El archivo de biblioteca no existe en: " .. lib_path, vim.log.levels.ERROR)
   return M
 end
 
--- Cargar el módulo
-local rust_module
+-- Cargar la biblioteca
+local ok, lib = pcall(vim.fn.load_dynamic_library, lib_path)
+if not ok then
+  vim.notify("No se pudo cargar la biblioteca: " .. tostring(lib), vim.log.levels.ERROR)
+  return M
+end
+
+-- Inicializar el módulo
 if lib.luaopen_rust_nvim_plugin then
-  rust_module = lib.luaopen_rust_nvim_plugin()
+  local rust_module = lib.luaopen_rust_nvim_plugin()
   -- Copiar todas las funciones del módulo a M
-  for k, v in pairs(rust_module) do
+  for k, v in pairs(rust_module or {}) do
     M[k] = v
   end
 else
-  vim.notify("Error al inicializar el módulo Rust", vim.log.levels.ERROR)
+  vim.notify("No se encontró la función luaopen_rust_nvim_plugin", vim.log.levels.ERROR)
 end
 
 return M
